@@ -1528,6 +1528,32 @@ do_curl_reset(CurlObject *self)
     return Py_None;
 }
 
+/* ------------------------ duphandle ------------------------ */
+
+static CurlObject*
+do_curl_duphandle(CurlObject *self)
+{
+	CurlObject *cloned = NULL;
+
+	/* Allocate python curl object */
+	cloned = util_curl_new();
+	if (cloned == NULL)
+		return NULL;
+
+	/* Duplicate curl handle */
+	cloned->handle = curl_easy_duphandle(self->handle);
+	if (cloned->handle == NULL)
+		goto error;
+
+	/* Success - return duplicated object */
+	return self;
+
+error:
+	Py_DECREF(cloned);    /* this also closes cloned->handle */
+	PyErr_SetString(ErrorObject, "duplicating curl failed");
+	return NULL;
+}
+
 /* --------------- unsetopt/setopt/getinfo --------------- */
     int res;
 
@@ -3003,6 +3029,7 @@ static char co_perform_doc [] = "perform() -> None.  Perform a file transfer.  T
 static char co_setopt_doc [] = "setopt(option, parameter) -> None.  Set curl session option.  Throws pycurl.error exception upon failure.\n";
 static char co_unsetopt_doc [] = "unsetopt(option) -> None.  Reset curl session option to default value.  Throws pycurl.error exception upon failure.\n";
 static char co_reset_doc [] = "reset() -> None. Reset all options set on curl handle to default values, but preserves live connections, session ID cache, DNS cache, cookies, and shares.\n";
+static char co_duphandle_doc [] = "duphandle() -> Curl. This function will return a new curl handle, a duplicate, using all the options previously set in the input curl handle. Both handles can subsequently be used independently and they must both be freed with curl_easy_cleanup(3).\n\nAll strings that the input handle has been told to point to (as opposed to copy) with previous calls to curl_easy_setopt(3) using char * inputs, will be pointed to by the new handle as well. You must therefore make sure to keep the data around until both handles have been cleaned up.\n\nThe new handle will not inherit any state information, no connections, no SSL sessions and no cookies.\n\nNote that even in multi-threaded programs, this function must be called in a synchronous way, the input handle may not be in use when cloned.";
 
 static char co_multi_fdset_doc [] = "fdset() -> Tuple.  Returns a tuple of three lists that can be passed to the select.select() method .\n";
 static char co_multi_info_read_doc [] = "info_read([max_objects]) -> Tuple. Returns a tuple (number of queued handles, [curl objects]).\n";
@@ -3023,6 +3050,7 @@ static PyMethodDef curlobject_methods[] = {
     {"setopt", (PyCFunction)do_curl_setopt, METH_VARARGS, co_setopt_doc},
     {"unsetopt", (PyCFunction)do_curl_unsetopt, METH_VARARGS, co_unsetopt_doc},
     {"reset", (PyCFunction)do_curl_reset, METH_NOARGS, co_reset_doc},
+    {"duphandle", (PyCFunction)do_curl_duphandle, METH_NOARGS, co_duphandle_doc},
     {NULL, NULL, 0, NULL}
 };
 
