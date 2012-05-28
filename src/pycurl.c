@@ -32,6 +32,8 @@
  *
  * See file README for license information.
  */
+#define PYCURL_VERSION "7.19.0"
+#define PYCURL_PATCHES "DUPHANDLE FDSET-RETVAL"
 
 #if (defined(_WIN32) || defined(__WIN32__)) && !defined(WIN32)
 #  define WIN32 1
@@ -3539,7 +3541,8 @@ initpycurl(void)
     assert(curlobject_constants != NULL);
 
     /* Add version strings to the module */
-    insstr(d, "version", curl_version());
+    insstr(d, "version", PYCURL_VERSION);
+    insstr(d, "patches", PYCURL_PATCHES);
     insstr(d, "COMPILE_DATE", __DATE__ " " __TIME__);
     insint(d, "COMPILE_PY_VERSION_HEX", PY_VERSION_HEX);
     insint(d, "COMPILE_LIBCURL_VERSION_NUM", LIBCURL_VERSION_NUM);
