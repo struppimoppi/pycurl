@@ -2999,7 +2999,12 @@ do_multi_select(CurlMultiObject *self, PyObject *args)
     }
 
     if (max_fd < 0) {
-        n = 0;
+        // Do not return Zero here! Zero is returned already if the select timeout occured.
+        // It might be a difference for the caller whether the select timeout occured or
+        // whether no easy handle has a valid socket (VALID_SOCK)  attached (which is when
+        // the handle is not connected to the remote host yet or because it is/was not possible
+        // to connect. See also libcurl/lib/multi.c @ curl_multi_fdset
+        n = -2;
     }
     else {
         Py_BEGIN_ALLOW_THREADS
