@@ -100,29 +100,42 @@ else:
     # Run curl-config --libs and --static-libs.  Some platforms may not
     # support one or the other of these curl-config options, so gracefully
     # tolerate failure of either, but not both.
-    optbuf = ""
+    static_libcurl = False
+    if '--static-libcurl' in sys.argv:
+        print "static-libcurl request: using libcurl.a instead of libcurl.so"
+        sys.argv.remove('--static-libcurl')             # otherwise optparse will complain...
+        static_libcurl = True
+    empty_config = 0
+    # "curl-config --libs" only reports "-lcurl" plus "-Lpath" but unformtunatly not all other libs
+    # which come when called with "--static-libs". That's why always both configurations get queried
+    # and we filter out the "-lcurl" in static case and the "libcurl.a" in dynamic case.
     for option in ["--libs", "--static-libs"]:
-        p = subprocess.Popen("'%s' %s" % (CURL_CONFIG, option), shell=True,
-            stdout=subprocess.PIPE)
-        (stdout, stderr) = p.communicate()
-        if p.wait() == 0:
-            optbuf += stdout
-    if optbuf == "":
-        raise Exception, ("Neither of curl-config --libs or --static-libs" +
-            "produced output")
-    libs = split_quoted(optbuf)
+        p = subprocess.Popen("'%s' %s" % (CURL_CONFIG, option), shell=True, stdout=subprocess.PIPE)
+        (optbuf, stderr) = p.communicate()
+        if p.wait() != 0:
+            raise Exception, ("curl-config returned with exit code %d" % p.returncode())
+        if optbuf == "":
+            empty_config += 1
+            continue
 
-    for e in libs:
-        if e[:2] == "-l":
-            libraries.append(e[2:])
-            if e[2:] == 'ssl':
-                define_macros.append(('HAVE_CURL_OPENSSL', 1))
-            if e[2:] == 'gnutls':
-                define_macros.append(('HAVE_CURL_GNUTLS', 1))
-        elif e[:2] == "-L":
-            library_dirs.append(e[2:])
-        else:
-            extra_link_args.append(e)
+        libs = split_quoted(optbuf)
+
+        for e in libs:
+            if e[:2] == "-l":
+                if e[2:] != 'curl' or not static_libcurl:
+                    libraries.append(e[2:])
+                if e[2:] == 'ssl':
+                    define_macros.append(('HAVE_CURL_OPENSSL', 1))
+                if e[2:] == 'gnutls':
+                    define_macros.append(('HAVE_CURL_GNUTLS', 1))
+            elif e[:2] == "-L":
+                library_dirs.append(e[2:])
+            elif static_libcurl:
+                # static libs like "something.a" should be specified before the "-lneededLibrary" args
+                # so save them in extra_object and not in extra_lib_args
+                extra_objects.append(e)
+    if empty_config == 2:
+        raise Exception("Neither of curl-config --libs or --static-libs produced output")
     for e in split_quoted(os.popen("'%s' --features" % CURL_CONFIG).read()):
         if e == 'SSL':
             define_macros.append(('HAVE_CURL_SSL', 1))
