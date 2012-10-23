@@ -1548,7 +1548,7 @@ do_curl_duphandle(CurlObject *self)
 		goto error;
 
 	/* Success - return duplicated object */
-	return self;
+	return cloned;
 
 error:
 	Py_DECREF(cloned);    /* this also closes cloned->handle */
