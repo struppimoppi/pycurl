@@ -1547,6 +1547,10 @@ do_curl_duphandle(CurlObject *self)
 	if (cloned->handle == NULL)
 		goto error;
 
+        // resets error buffer to the one in the cloned-CurlObject and corrects the backref to cloned
+        if (util_curl_init(cloned) != 0)
+                goto error;
+
 	/* Success - return duplicated object */
 	return cloned;
 
